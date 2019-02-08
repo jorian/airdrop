@@ -1,7 +1,9 @@
 [package]
-name = "airdrop"
-version = "0.1.0"
+name = "komodo_airdrop"
+description = "An airdrop manager for Komodo and its assetchains"
+version = "0.0.1"
 authors = ["Jorian <jorian@outlook.com>"]
 edition = "2018"
+license = "MIT"
 
 [dependencies]
