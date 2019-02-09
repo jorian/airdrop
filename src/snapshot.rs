@@ -9,11 +9,14 @@ Snapshot
 */
 use komodo_rpc_client::Client;
 use komodo_rpc_client::Chain;
+use komodo_rpc_client::KomodoRpcApi;
+
 use std::default::Default;
 
+#[derive(Debug)]
 pub struct Snapshot {
-    addresses: Vec<String>,
-    amount: f64,
+    pub addresses: Vec<Address>,
+    pub amount: f64,
 }
 
 pub struct Address {
@@ -35,35 +38,35 @@ pub struct SnapshotBuilder {
 }
 
 impl Snapshot {
-    fn builder() -> SnapshotBuilder {
-        SnapshotBuilder {
-            chain: Default::default(),
-            threshold: Default::default(),
-            max_addresses: Default::default(),
-            excluded_addresses: Default::default()
-        }
+    pub fn builder() -> SnapshotBuilder {
+        Default::default()
     }
 }
 
 impl SnapshotBuilder {
-    fn using_threshold(&mut self, threshold: f64) -> &mut Self {
-        self.threshold;
+    pub fn on_chain(&mut self, chain: Chain) -> &mut Self {
+        self.chain = chain;
+        self
+    }
+
+    pub fn using_threshold(&mut self, threshold: f64) -> &mut Self {
+        self.threshold = threshold;
         self
     }
 
     /// Include only the top `max` addresses in the snapshot. A max of 10 gives a snapshot of the
     /// top 10 addresses, based on their balance on their chain.
-    fn max_addresses(&mut self, max: u32) -> &mut Self {
+    pub fn max_addresses(&mut self, max: u32) -> &mut Self {
         self.max_addresses = Some(max);
         self
     }
 
-    fn exclude_addresses(&mut self, addresses: Vec<String>) -> &mut Self {
+    pub fn exclude_addresses(&mut self, addresses: Vec<String>) -> &mut Self {
         self.excluded_addresses = Some(addresses);
         self
     }
 
-    fn make(&mut self) -> Snapshot {
+    pub fn make(&mut self) -> Snapshot {
         // a lot of code to do a snapshot, using komodod
         let client = match self.chain {
             Chain::KMD => komodo_rpc_client::Client::new_komodo_client(),
@@ -74,19 +77,34 @@ impl SnapshotBuilder {
         let client = client.unwrap();
 
         // todo handle any error, after adding error handling
-        let snapshot = match self.max_addresses {
+        let mut snapshot = match self.max_addresses {
             Some(max) => client.get_snapshot_max(max),
             None => client.get_snapshot()
         }.unwrap().unwrap();
 
-        // todo remove self.excluded_addresses from snapshot
+        dbg!(&self.threshold);
 
-        // todo get all addresses below threshold out of snapshot
+        if self.threshold > 0.0 {
+            snapshot.addresses = snapshot.addresses
+                .drain_filter(|saddress| saddress.amount > self.threshold)
+                .collect::<Vec<_>>();
+        }
 
+        let addresses = snapshot.addresses
+            .iter()
+            .filter(|address| {
+                let excluded_addresses = self.excluded_addresses.clone();
+                match excluded_addresses  {
+                    Some(vec) => !vec.contains(&address.addr),
+                    None => return true
+                }
+            })
+            .map(|address| Address { addr: address.addr.clone(), amount: address.amount })
+            .collect::<Vec<_>>();
 
         Snapshot {
-            addresses: vec!["ab34234".to_string()],
-            amount: 0.0
+            addresses,
+            amount: snapshot.total
         }
     }
 }
