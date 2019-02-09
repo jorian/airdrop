@@ -73,6 +73,8 @@ impl SnapshotBuilder {
                 .collect::<Vec<_>>();
         }
 
+        // first, remove any predefined excluded addresses from the snapshotted address vec
+        // then, map each address and its corresponding amount to an Address struct.
         let addresses = snapshot.addresses
             .iter()
             .filter(|address| {
