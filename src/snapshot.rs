@@ -1,12 +1,3 @@
-/*
-
-Snapshot
---------
-
-- exclude addresses
-- threshold
-
-*/
 use komodo_rpc_client::Client;
 use komodo_rpc_client::Chain;
 use komodo_rpc_client::KomodoRpcApi;
@@ -19,22 +10,16 @@ pub struct Snapshot {
     pub amount: f64,
 }
 
-pub struct Address {
-    pub addr: String,
-    pub amount: f64
-}
-
-#[derive(Debug)]
-pub struct AddressPayout {
-    pub addr: String,
-    pub kmd_amount: i64
-}
-
 pub struct SnapshotBuilder {
     chain: Chain,
     threshold: f64,
     max_addresses: Option<u32>,
     excluded_addresses: Option<Vec<String>>
+}
+
+pub struct Address {
+    pub addr: String,
+    pub amount: f64
 }
 
 impl Snapshot {
@@ -81,8 +66,6 @@ impl SnapshotBuilder {
             Some(max) => client.get_snapshot_max(max),
             None => client.get_snapshot()
         }.unwrap().unwrap();
-
-        dbg!(&self.threshold);
 
         if self.threshold > 0.0 {
             snapshot.addresses = snapshot.addresses
