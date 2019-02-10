@@ -1,10 +1,12 @@
 #![feature(drain_filter)]
 extern crate komodo_rpc_client;
+#[macro_use]
+extern crate derive_more;
 
 mod airdrop;
 mod snapshot;
+mod error;
 
-pub use snapshot::*;
 pub use komodo_rpc_client::Chain;
 
 #[cfg(test)]

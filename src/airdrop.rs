@@ -12,7 +12,7 @@ Airdrop
 - z-support?
 */
 use komodo_rpc_client::Chain;
-use Snapshot;
+use crate::snapshot::Snapshot;
 
 
 // holds inputs to an airdrop transaction
@@ -29,10 +29,11 @@ pub struct Airdrop {
 impl Airdrop {
     pub fn builder() -> AirdropBuilder {
 
+        Default::default()
     }
 
-    pub fn print_string() {
-        // should print a string to sign
+    pub fn signing_string() {
+        // should return a string to sign
         // multisig should include P2SH inputs.
     }
 }
@@ -81,8 +82,8 @@ impl AirdropBuilder {
         self
     }
 
-    pub fn configure() -> Airdrop {
-
+    pub fn configure() {
+        // todo should return Airdrop
     }
 }
 

@@ -17,6 +17,7 @@ pub struct SnapshotBuilder {
     excluded_addresses: Option<Vec<String>>
 }
 
+#[derive(Debug)]
 pub struct Address {
     pub addr: String,
     pub amount: f64
