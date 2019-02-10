@@ -4,6 +4,9 @@ use komodo_rpc_client::KomodoRpcApi;
 
 use std::default::Default;
 
+use crate::error::AirdropError;
+use crate::error::ErrorKind;
+
 #[derive(Debug)]
 pub struct Snapshot {
     pub addresses: Vec<Address>,
@@ -52,7 +55,7 @@ impl SnapshotBuilder {
         self
     }
 
-    pub fn make(&mut self) -> Snapshot {
+    pub fn make(&mut self) -> Result<Snapshot, AirdropError> {
         // a lot of code to do a snapshot, using komodod
         let client = match self.chain {
             Chain::KMD => komodo_rpc_client::Client::new_komodo_client(),
@@ -60,13 +63,17 @@ impl SnapshotBuilder {
         };
 
         // todo error handling
-        let client = client.unwrap();
+        let client = client?;
 
         // todo handle any error, after adding error handling
         let mut snapshot = match self.max_addresses {
             Some(max) => client.get_snapshot_max(max),
             None => client.get_snapshot()
-        }.unwrap().unwrap();
+        }?.unwrap();
+
+        if snapshot.addresses.is_empty() {
+            return Err(ErrorKind::EmptySnapshot.into())
+        }
 
         if self.threshold > 0.0 {
             snapshot.addresses = snapshot.addresses
@@ -88,10 +95,10 @@ impl SnapshotBuilder {
             .map(|address| Address { addr: address.addr.clone(), amount: address.amount })
             .collect::<Vec<_>>();
 
-        Snapshot {
+        Ok(Snapshot {
             addresses,
             amount: snapshot.total
-        }
+        })
     }
 }
 

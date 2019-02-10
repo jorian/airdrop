@@ -1,9 +1,11 @@
-use derive_more;
-
 use std::error::Error;
 use std::fmt;
 use std::io;
 
+use komodo_rpc_client::ApiError;
+
+#[derive(Debug, Display)]
+#[display(fmt = "{}", kind)]
 pub struct AirdropError {
     pub kind: ErrorKind,
     source: Option<Box<dyn Error + Send + Sync + 'static>>
@@ -15,10 +17,13 @@ pub enum ErrorKind {
     EmptySnapshot,
     #[display(fmt = "Not enough balance in source address.")]
     BalanceInsufficient,
-    #[display(fmt = "Not enough balance in source address.")]
+    #[display(fmt = "An I/O error occured.")]
     Io(io::Error),
+    #[display(fmt = "Something went wrong during the komodod RPC.")]
+    ApiError(komodo_rpc_client::ApiError),
 
-    // todo nonexhaustive to not have a breaking change when adding an error type
+
+// todo nonexhaustive to not have a breaking change when adding an error type
 }
 
 impl Error for AirdropError {
@@ -35,5 +40,11 @@ impl From<ErrorKind> for AirdropError {
             kind,
             source: None
         }
+    }
+}
+
+impl From<ApiError> for AirdropError {
+    fn from(e: ApiError) -> Self {
+        ErrorKind::ApiError(e).into()
     }
 }

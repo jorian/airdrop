@@ -45,6 +45,7 @@ pub struct AirdropBuilder {
 }
 
 // todo use a file with addresses as input, where file is able to be read by serde
+// todo how to throw errors in a builder pattern?
 impl AirdropBuilder {
     pub fn with_chain(&mut self, chain: Chain) -> &mut Self {
 

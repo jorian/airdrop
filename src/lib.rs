@@ -8,6 +8,8 @@ mod snapshot;
 mod error;
 
 pub use komodo_rpc_client::Chain;
+pub use crate::snapshot::{Snapshot, SnapshotBuilder};
+pub use crate::airdrop::{Airdrop, AirdropBuilder};
 
 #[cfg(test)]
 mod tests {
