@@ -11,9 +11,16 @@ Airdrop
 
 - z-support?
 
+- assumes there are two blockchains running and synced:
+    - the one where the snapshot takes place (usually an assetchain)
+    - the one from where the funds are airdropped (mostly KMD)
+*/
+
+use komodo_rpc_client::KomodoRpcApi;
 use komodo_rpc_client::Chain;
 use crate::snapshot::Snapshot;
 use crate::error::AirdropError;
+use crate::snapshot::Address;
 
 
 // holds inputs to an airdrop transaction
@@ -23,9 +30,15 @@ use crate::error::AirdropError;
 //   this string could (should) eventually have a wrapper for easy sharing and signing
 pub struct Airdrop {
     // todo inputs?
-    addresses: Vec<AddressPayout>,
+    source_address: SourceAddress,
+    participants: Vec<AddressPayout>,
     // todo Option<P2SH_Inputs>?
     multisig: bool,
+    include_interest: bool,
+    from_chain: Chain,
+    dest_chain: Chain,
+    snapshot: Snapshot,
+    ratio: f64,
 }
 
 impl Airdrop {
@@ -34,13 +47,68 @@ impl Airdrop {
         Default::default()
     }
 
-    pub fn signing_string() {
+    pub fn signing_string(&self) {
         // should return a string to sign
         // multisig should include P2SH inputs.
+    }
+
+    pub fn calculate(&self) -> Result<(), AirdropError> {
+        let source_client = match &self.from_chain {
+            Chain::KMD => komodo_rpc_client::Client::new_komodo_client(),
+            _ => komodo_rpc_client::Client::new_assetchain_client(&self.from_chain)
+        }?;
+
+        let mut source_address = komodo_rpc_client::AddressList::new();
+        source_address.add(&self.source_address.0);
+
+        let utxoset = source_client.get_address_utxos(&source_address)?
+            .unwrap();
+
+        let balance = match (self.include_interest, self.dest_chain) {
+            (true, Chain::KMD) => {
+                utxoset.0.iter()
+                    .fold(0, |acc, utxo|
+                        {
+                            (source_client.get_raw_transaction_verbose(
+                                komodo_rpc_client::TransactionId::from_hex(&utxo.txid).unwrap())
+                                .unwrap()
+                                .unwrap()
+                                .vout.get(utxo.output_index as usize).unwrap().interest * 100_000_000.0) as u64
+                        }
+                        + acc + utxo.satoshis)
+            }
+            _ => utxoset.0.iter()
+                .fold(0, |acc, utxo| acc + utxo.satoshis)
+        };
+
+        // apply ratio:
+        let balance = (balance as f64 * self.ratio) as u64;
+
+        let participants = self.snapshot.addresses.clone();
+        let denominator = participants.iter().fold(0, |acc, x| acc + ((x.amount * 100_000_000.0) as u64));
+
+//        dbg!(denominator);
+
+        let mut payout_addresses = vec![];
+        for a in participants {
+//            dbg!(&a.amount);
+            payout_addresses.push(AddressPayout {
+                addr: a.addr,
+                sat_amount: ((balance as f64) * (a.amount * 100_000_000.0) / denominator as f64) as u64,
+            });
+        }
+
+        let sum = payout_addresses.iter().fold(0, |acc, address| acc + address.sat_amount);
+
+//        dbg!(&payout_addresses);
+        dbg!(sum);
+
+        Ok(())
     }
 }
 
 pub struct AirdropBuilder {
+    sourceaddress: Option<SourceAddress>,
     chain: Chain,
     payoutratio: f64,
     interest: bool,
@@ -64,12 +132,16 @@ impl AirdropBuilder {
     }
 
     pub fn source_address(&mut self, source: &str) -> &mut Self {
-
+        self.sourceaddress = Some(SourceAddress(source.to_owned()));
         // recognize address: P2SH or P2PKH.
         self
     }
 
     pub fn payout_ratio(&mut self, ratio: f64) -> &mut Self {
+        match ratio {
+            0.0..=1.0 => self.payoutratio = ratio,
+            _ => panic!("Ratio is not between 0.0 and 1.0")
+        }
 
 
         self
@@ -82,27 +154,32 @@ impl AirdropBuilder {
     }
 
     pub fn include_interest(&mut self, include: bool) -> &mut Self {
-        // todo throw error when not KMD
+        self.interest = include;
 
         self
     }
 
-    pub fn configure(mut self) -> Result<Airdrop, AirdropError> {
+    pub fn configure(&self) -> Result<Airdrop, AirdropError> {
         let from_chain = self.chain;
 
         // an airdrop doesn't work without a snapshot, so chain is always set.
-        let snapshot = self.snapshot.unwrap();
+        let mut snapshot = self.snapshot.clone().unwrap();
 //        let to_chain = snapshot.chain;
 
-        let addresses = snapshot.addresses;
+        let sourceaddress = self.sourceaddress.clone().unwrap();
 
-        // todo Vec of snapshot addresses need to be converted, where we need to
-        // properly divide funds over the snapshot addresses.
+        let ratio = self.payoutratio;
 
 
         Ok(Airdrop {
-            addresses: vec![],
-            multisig: false
+            from_chain: from_chain,
+            dest_chain: self.chain,
+            source_address: sourceaddress,
+            participants: vec![],
+            multisig: false,
+            include_interest: self.interest,
+            snapshot: snapshot,
+            ratio: ratio,
         })
     }
 }
@@ -110,6 +187,7 @@ impl AirdropBuilder {
 impl Default for AirdropBuilder {
     fn default() -> Self {
         AirdropBuilder {
+            sourceaddress: None,
             chain: Chain::KMD,
             payoutratio: 1.0,
             interest: false,
@@ -119,10 +197,17 @@ impl Default for AirdropBuilder {
     }
 }
 
+#[derive(Debug)]
 pub struct AddressPayout {
     pub addr: String,
-    pub amount: f64
+    pub sat_amount: u64
 }
 
+#[derive(Debug, Clone)]
+pub struct SourceAddress(String);
 
-*/
+impl SourceAddress {
+    pub fn is_valid(&self) -> bool {
+        self.0.len() == 34
+    }
+}

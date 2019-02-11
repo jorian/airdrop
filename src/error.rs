@@ -22,6 +22,8 @@ pub enum ErrorKind {
     #[display(fmt = "Something went wrong during the komodod RPC.")]
     ApiError(komodo_rpc_client::ApiError),
 
+    // addressindex not enabled
+    // daemon not running
 
 // todo nonexhaustive to not have a breaking change when adding an error type
 }

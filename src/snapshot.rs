@@ -7,7 +7,7 @@ use std::default::Default;
 use crate::error::AirdropError;
 use crate::error::ErrorKind;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Snapshot {
     pub chain: Chain,
     pub addresses: Vec<Address>,
@@ -21,7 +21,7 @@ pub struct SnapshotBuilder {
     excluded_addresses: Option<Vec<String>>
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Address {
     pub addr: String,
     pub amount: f64
