@@ -10,9 +10,10 @@ Airdrop
 - define which coin to airdrop (KMD or assetchain)
 
 - z-support?
-*/
+
 use komodo_rpc_client::Chain;
 use crate::snapshot::Snapshot;
+use crate::error::AirdropError;
 
 
 // holds inputs to an airdrop transaction
@@ -22,8 +23,9 @@ use crate::snapshot::Snapshot;
 //   this string could (should) eventually have a wrapper for easy sharing and signing
 pub struct Airdrop {
     // todo inputs?
-    payout_addresses: Vec<AddressPayout>
+    addresses: Vec<AddressPayout>,
     // todo Option<P2SH_Inputs>?
+    multisig: bool,
 }
 
 impl Airdrop {
@@ -42,19 +44,21 @@ pub struct AirdropBuilder {
     chain: Chain,
     payoutratio: f64,
     interest: bool,
+    multisig: bool,
+    snapshot: Option<Snapshot>,
 }
 
 // todo use a file with addresses as input, where file is able to be read by serde
 // todo how to throw errors in a builder pattern?
 impl AirdropBuilder {
-    pub fn with_chain(&mut self, chain: Chain) -> &mut Self {
-
+    pub fn using_chain(&mut self, chain: Chain) -> &mut Self {
+        self.chain = chain;
 
         self
     }
 
     pub fn using_snapshot(&mut self, snapshot: Snapshot) -> &mut Self {
-
+        self.snapshot = Some(snapshot);
 
         self
     }
@@ -83,8 +87,23 @@ impl AirdropBuilder {
         self
     }
 
-    pub fn configure() {
-        // todo should return Airdrop
+    pub fn configure(mut self) -> Result<Airdrop, AirdropError> {
+        let from_chain = self.chain;
+
+        // an airdrop doesn't work without a snapshot, so chain is always set.
+        let snapshot = self.snapshot.unwrap();
+//        let to_chain = snapshot.chain;
+
+        let addresses = snapshot.addresses;
+
+        // todo Vec of snapshot addresses need to be converted, where we need to
+        // properly divide funds over the snapshot addresses.
+
+
+        Ok(Airdrop {
+            addresses: vec![],
+            multisig: false
+        })
     }
 }
 
@@ -94,6 +113,8 @@ impl Default for AirdropBuilder {
             chain: Chain::KMD,
             payoutratio: 1.0,
             interest: false,
+            multisig: false,
+            snapshot: None,
         }
     }
 }
@@ -102,3 +123,6 @@ pub struct AddressPayout {
     pub addr: String,
     pub amount: f64
 }
+
+
+*/

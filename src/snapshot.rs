@@ -9,6 +9,7 @@ use crate::error::ErrorKind;
 
 #[derive(Debug)]
 pub struct Snapshot {
+    pub chain: Chain,
     pub addresses: Vec<Address>,
     pub amount: f64,
 }
@@ -55,15 +56,12 @@ impl SnapshotBuilder {
         self
     }
 
-    pub fn make(&mut self) -> Result<Snapshot, AirdropError> {
+    pub fn make(&self) -> Result<Snapshot, AirdropError> {
         // a lot of code to do a snapshot, using komodod
-        let client = match self.chain {
-            Chain::KMD => komodo_rpc_client::Client::new_komodo_client(),
-            _ => komodo_rpc_client::Client::new_assetchain_client(&self.chain)
+        let client = match &self.chain {
+            Chain::KMD => komodo_rpc_client::Client::new_komodo_client()?,
+            _ => komodo_rpc_client::Client::new_assetchain_client(&self.chain)?
         };
-
-        // todo error handling
-        let client = client?;
 
         // todo handle any error, after adding error handling
         let mut snapshot = match self.max_addresses {
@@ -96,6 +94,7 @@ impl SnapshotBuilder {
             .collect::<Vec<_>>();
 
         Ok(Snapshot {
+            chain: self.chain,
             addresses,
             amount: snapshot.total
         })
