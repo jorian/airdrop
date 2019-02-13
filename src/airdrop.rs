@@ -29,16 +29,15 @@ use crate::snapshot::Address;
 // in case of a multisig, it should be able to print the required signrawtransaction (done manually)
 //   this string could (should) eventually have a wrapper for easy sharing and signing
 pub struct Airdrop {
-    // todo inputs?
-    source_address: SourceAddress,
-    participants: Vec<AddressPayout>,
+    // todo CreateRawTransactionInputs?
     // todo Option<P2SH_Inputs>?
-    multisig: bool,
-    include_interest: bool,
-    from_chain: Chain,
-    dest_chain: Chain,
+
     snapshot: Snapshot,
+    fund_address: FundAddress,
+    dest_chain: Chain,
+    include_interest: bool,
     ratio: f64,
+    multisig: bool,
 }
 
 impl Airdrop {
@@ -70,8 +69,7 @@ impl Airdrop {
                     .fold(0, |acc, utxo|
                         {
                             (source_client.get_raw_transaction_verbose(
-                                komodo_rpc_client::TransactionId::from_hex(&utxo.txid).unwrap())
-                                .unwrap()
+                                komodo_rpc_client::TransactionId::from_hex(&utxo.txid).unwrap())?
                                 .unwrap()
                                 .vout.get(utxo.output_index as usize).unwrap().interest * 100_000_000.0) as u64
                         }
@@ -92,9 +90,9 @@ impl Airdrop {
         let mut payout_addresses = vec![];
         for a in participants {
 //            dbg!(&a.amount);
-            payout_addresses.push(AddressPayout {
-                addr: a.addr,
-                sat_amount: ((balance as f64) * (a.amount * 100_000_000.0) / denominator as f64) as u64,
+            payout_addresses.push(DestAddress {
+                address: a.addr,
+                amount: ((balance as f64) * (a.amount * 100_000_000.0) / denominator as f64) as u64,
             });
         }
 
@@ -108,12 +106,12 @@ impl Airdrop {
 }
 
 pub struct AirdropBuilder {
-    sourceaddress: Option<SourceAddress>,
-    chain: Chain,
-    payoutratio: f64,
-    interest: bool,
-    multisig: bool,
     snapshot: Option<Snapshot>,
+    fund_address: Option<FundAddress>,
+    chain: Chain,
+    interest: bool,
+    payoutratio: f64,
+    multisig: bool,
 }
 
 // todo use a file with addresses as input, where file is able to be read by serde
@@ -132,7 +130,7 @@ impl AirdropBuilder {
     }
 
     pub fn source_address(&mut self, source: &str) -> &mut Self {
-        self.sourceaddress = Some(SourceAddress(source.to_owned()));
+        self.fund_address = Some(FundAddress(source.to_owned()));
         // recognize address: P2SH or P2PKH.
         self
     }
@@ -160,22 +158,18 @@ impl AirdropBuilder {
     }
 
     pub fn configure(&self) -> Result<Airdrop, AirdropError> {
-        let from_chain = self.chain;
-
         // an airdrop doesn't work without a snapshot, so chain is always set.
         let mut snapshot = self.snapshot.clone().unwrap();
 //        let to_chain = snapshot.chain;
 
-        let sourceaddress = self.sourceaddress.clone().unwrap();
+        let sourceaddress = self.fund_address.clone().unwrap();
 
         let ratio = self.payoutratio;
 
 
         Ok(Airdrop {
-            from_chain: from_chain,
             dest_chain: self.chain,
-            source_address: sourceaddress,
-            participants: vec![],
+            fund_address: sourceaddress,
             multisig: false,
             include_interest: self.interest,
             snapshot: snapshot,
@@ -187,7 +181,7 @@ impl AirdropBuilder {
 impl Default for AirdropBuilder {
     fn default() -> Self {
         AirdropBuilder {
-            sourceaddress: None,
+            fund_address: None,
             chain: Chain::KMD,
             payoutratio: 1.0,
             interest: false,
@@ -198,15 +192,15 @@ impl Default for AirdropBuilder {
 }
 
 #[derive(Debug)]
-pub struct AddressPayout {
-    pub addr: String,
-    pub sat_amount: u64
+pub struct DestAddress {
+    pub address: String,
+    pub amount: u64
 }
 
 #[derive(Debug, Clone)]
-pub struct SourceAddress(String);
+pub struct FundAddress(String);
 
-impl SourceAddress {
+impl FundAddress {
     pub fn is_valid(&self) -> bool {
         self.0.len() == 34
     }
