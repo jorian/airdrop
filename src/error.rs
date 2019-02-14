@@ -20,6 +20,8 @@ pub enum ErrorKind {
     Io(io::Error),
     #[display(fmt = "Something went wrong during the komodod RPC.")]
     ApiError(komodo_rpc_client::ApiError),
+    #[display(fmt = "Serde error.")]
+    Serde(serde_json::error::Error),
 
     // addressindex not enabled
     // daemon not running
@@ -47,5 +49,11 @@ impl From<ErrorKind> for AirdropError {
 impl From<ApiError> for AirdropError {
     fn from(e: ApiError) -> Self {
         ErrorKind::ApiError(e).into()
+    }
+}
+
+impl From<serde_json::Error> for AirdropError {
+    fn from(e: serde_json::Error) -> Self {
+        ErrorKind::Serde(e).into()
     }
 }

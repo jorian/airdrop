@@ -20,6 +20,9 @@ use komodo_rpc_client::KomodoRpcApi;
 use komodo_rpc_client::Chain;
 use crate::snapshot::Snapshot;
 use crate::error::AirdropError;
+use komodo_rpc_client::AddressUtxo;
+use komodo_rpc_client::AddressUtxos;
+use serde_json::from_str;
 
 
 // holds inputs to an airdrop transaction
@@ -34,6 +37,7 @@ pub struct Airdrop {
     snapshot: Snapshot,
     fund_address: FundAddress,
     ratio: f64,
+    dest_addresses: Option<Vec<DestAddress>>,
 }
 
 impl Airdrop {
@@ -42,12 +46,34 @@ impl Airdrop {
         Default::default()
     }
 
-    pub fn signing_string(&self) {
+    pub fn signing_string(&self) -> Result<String, AirdropError> {
         // should return a string to sign
         // multisig should include P2SH inputs.
+
+        let utxoset = self.get_current_utxoset()?;
+
+        let mut inputs = komodo_rpc_client::arguments::CreateRawTransactionInputs::new();
+        for utxo in utxoset.0 {
+            inputs.add(&utxo.txid, utxo.output_index);
+        }
+
+        let mut outputs = komodo_rpc_client::arguments::CreateRawTransactionOutputs::new();
+        for payout_addresses in &self.dest_addresses.clone().unwrap() {
+            outputs.add(&payout_addresses.address.clone(), (payout_addresses.amount as f64 / 100_000_000.0) );
+        }
+
+        if self.fund_address.multisig == false {
+            let inputs_str = serde_json::to_string(&inputs)?;
+            let outputs_str = serde_json::to_string(&outputs)?;
+
+            let joined = format!("{} {}", inputs_str, outputs_str);
+            dbg!(joined);
+        }
+
+        Ok(String::new())
     }
 
-    pub fn calculate(&self) -> Result<(), AirdropError> {
+    pub fn calculate(&mut self) -> Result<(), AirdropError> {
         let fund_client = match &self.fund_address.dest_chain {
             Chain::KMD => komodo_rpc_client::Client::new_komodo_client(),
             _ => komodo_rpc_client::Client::new_assetchain_client(&self.fund_address.dest_chain)
@@ -95,7 +121,23 @@ impl Airdrop {
             });
         }
 
+        self.dest_addresses = Some(dest_addresses);
+
         Ok(())
+    }
+
+    fn get_current_utxoset(&self) -> Result<AddressUtxos, AirdropError> {
+        let client = match &self.fund_address.dest_chain {
+            Chain::KMD => komodo_rpc_client::Client::new_komodo_client(),
+            _ => komodo_rpc_client::Client::new_assetchain_client(&self.fund_address.dest_chain)
+        }?;
+
+
+        let mut address_list = komodo_rpc_client::AddressList::new();
+        address_list.add(&self.fund_address.address);
+        let utxo_set = client.get_address_utxos(&address_list)?;
+
+        Ok(utxo_set.unwrap())
     }
 }
 
@@ -169,6 +211,7 @@ impl AirdropBuilder {
             fund_address,
             snapshot,
             ratio,
+            dest_addresses: None
         })
     }
 }
@@ -186,7 +229,7 @@ impl Default for AirdropBuilder {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DestAddress {
     pub address: String,
     pub amount: u64
