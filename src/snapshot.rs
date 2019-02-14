@@ -1,4 +1,3 @@
-use komodo_rpc_client::Client;
 use komodo_rpc_client::Chain;
 use komodo_rpc_client::KomodoRpcApi;
 

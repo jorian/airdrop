@@ -20,7 +20,6 @@ use komodo_rpc_client::KomodoRpcApi;
 use komodo_rpc_client::Chain;
 use crate::snapshot::Snapshot;
 use crate::error::AirdropError;
-use crate::snapshot::Address;
 
 
 // holds inputs to an airdrop transaction
@@ -60,7 +59,7 @@ impl Airdrop {
         let utxoset = fund_client.get_address_utxos(&address_list)?
             .unwrap();
 
-        let balance = utxoset.0.iter()
+        let mut balance = utxoset.0.iter()
             .fold(0, |acc, utxo| acc + utxo.satoshis);
 
         // if chain is KMD, interest is needed:
@@ -79,15 +78,14 @@ impl Airdrop {
 
         // add interest to balance
         if self.fund_address.include_interest {
-            let balance = balance + interest;
+            balance = balance + interest;
         }
 
         // apply ratio:
-        let balance = (balance as f64 * self.ratio) as u64;
+        balance = (balance as f64 * self.ratio) as u64;
 
         let snapshot_addresses = self.snapshot.addresses.clone();
         let denominator = snapshot_addresses.iter().fold(0, |acc, x| acc + ((x.amount * 100_000_000.0) as u64));
-
 
         let mut dest_addresses = vec![];
         for addr in snapshot_addresses {
@@ -96,8 +94,6 @@ impl Airdrop {
                 amount: ((balance as f64) * (addr.amount * 100_000_000.0) / denominator as f64) as u64,
             });
         }
-
-        let sum = dest_addresses.iter().fold(0, |acc, address| acc + address.amount);
 
         Ok(())
     }
@@ -128,6 +124,10 @@ impl AirdropBuilder {
     }
 
     pub fn fund_address(&mut self, source: &str) -> &mut Self {
+        if source.len() != 34 {
+            panic!("Source address length must be 34 chars.")
+        }
+
         self.address = source.to_owned();
 
         match source.chars().next() {
@@ -139,9 +139,10 @@ impl AirdropBuilder {
     }
 
     pub fn payout_ratio(&mut self, ratio: f64) -> &mut Self {
-        match ratio {
-            0.0..=1.0 => self.ratio = ratio,
-            _ => panic!("Ratio is not between 0.0 and 1.0")
+        if ratio > 0.0 && ratio <= 1.0 {
+            self.ratio = ratio;
+        } else {
+            panic!("Ratio must be a float in range from 0.0 up to and including 1.0.");
         }
 
         self
@@ -163,7 +164,6 @@ impl AirdropBuilder {
             include_interest: self.interest,
             multisig: self.multisig
         };
-
 
         Ok(Airdrop {
             fund_address,
@@ -198,12 +198,6 @@ pub struct FundAddress {
     dest_chain: Chain,
     include_interest: bool,
     multisig: bool,
-}
-
-impl FundAddress {
-    pub fn is_valid(&self) -> bool {
-        self.address.len() == 34
-    }
 }
 
 impl Default for FundAddress {
