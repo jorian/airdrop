@@ -40,7 +40,7 @@ pub struct Airdrop {
 }
 
 impl Airdrop {
-    pub fn builder() -> AirdropBuilder {
+    pub fn builder<'a>() -> AirdropBuilder<'a> {
 
         Default::default()
     }
@@ -140,9 +140,9 @@ impl Airdrop {
     }
 }
 
-pub struct AirdropBuilder {
+pub struct AirdropBuilder<'a> {
     chain: Chain,
-    snapshot: Option<Snapshot>,
+    snapshot: Option<&'a Snapshot>,
     address: String,
     multisig: bool,
     interest: bool,
@@ -151,14 +151,14 @@ pub struct AirdropBuilder {
 
 // todo use a file with addresses as input, where file is able to be read by serde
 // todo how to throw errors in a builder pattern?
-impl AirdropBuilder {
+impl<'a> AirdropBuilder<'a> {
     pub fn using_chain(&mut self, chain: Chain) -> &mut Self {
         self.chain = chain;
 
         self
     }
 
-    pub fn using_snapshot(&mut self, snapshot: Snapshot) -> &mut Self {
+    pub fn using_snapshot(&mut self, snapshot: &'a Snapshot) -> &mut Self {
         self.snapshot = Some(snapshot);
 
         self
@@ -215,7 +215,7 @@ impl AirdropBuilder {
     }
 }
 
-impl Default for AirdropBuilder {
+impl<'a> Default for AirdropBuilder<'a> {
     fn default() -> Self {
         AirdropBuilder {
             chain: Chain::KMD,
