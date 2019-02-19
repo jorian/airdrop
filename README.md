@@ -14,8 +14,8 @@ fn main() {
             String::from("RU9F2EdDzUNK4LUMgjLTMDmtCmDK1a9vrY"),
             String::from("RYEufBcEUsofxwt4bGUdroRGmAQxBR8aJG")
         ])
-        .using_threshold(1.0) // address needs to contain at least 1 CHAIN
-        .make()
+        .using_threshold(1.0) // all addresses need to contain at least 1 CHAIN
+        .take()
         .unwrap();
     
     let airdrop = komodo_airdrop::Airdrop::builder()
@@ -29,10 +29,15 @@ fn main() {
     }
 ```
 
-todo:
+##### todo:
 
+- [ ] documentation
 - [ ] define static payout amount in addition to ratio
 - [ ] let the builder pattern work with Results (trait type?)
 - [ ] send back interest to fund_address
 - [ ] calculate() shouldn't be a mut.. find better way to store dest_addresses
+- [ ] add P2SH inputs to support multisig airdrop
 - [x] airdrop take a reference to snapshot
+
+##### long term maybe's:
+- [ ] serialize multisig raw tx for easy multiparty signing

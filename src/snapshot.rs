@@ -55,7 +55,7 @@ impl SnapshotBuilder {
         self
     }
 
-    pub fn make(&self) -> Result<Snapshot, AirdropError> {
+    pub fn take(&self) -> Result<Snapshot, AirdropError> {
         // a lot of code to do a snapshot, using komodod
         let client = match &self.chain {
             Chain::KMD => komodo_rpc_client::Client::new_komodo_client()?,
