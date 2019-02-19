@@ -20,9 +20,8 @@ use komodo_rpc_client::KomodoRpcApi;
 use komodo_rpc_client::Chain;
 use crate::snapshot::Snapshot;
 use crate::error::AirdropError;
-use komodo_rpc_client::AddressUtxo;
 use komodo_rpc_client::AddressUtxos;
-use serde_json::from_str;
+use serde_json;
 
 
 // holds inputs to an airdrop transaction
@@ -59,7 +58,7 @@ impl Airdrop {
 
         let mut outputs = komodo_rpc_client::arguments::CreateRawTransactionOutputs::new();
         for payout_addresses in &self.dest_addresses.clone().unwrap() {
-            outputs.add(&payout_addresses.address.clone(), (payout_addresses.amount as f64 / 100_000_000.0) );
+            outputs.add(&payout_addresses.address.clone(), payout_addresses.amount as f64 / 100_000_000.0);
         }
 
         if self.fund_address.multisig == false {
@@ -209,7 +208,7 @@ impl AirdropBuilder {
 
         Ok(Airdrop {
             fund_address,
-            snapshot,
+            snapshot: snapshot.clone(),
             ratio,
             dest_addresses: None
         })
