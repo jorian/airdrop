@@ -196,7 +196,7 @@ impl<'a> AirdropBuilder<'a> {
     }
 
     pub fn configure(&self) -> Result<Airdrop, AirdropError> {
-        let snapshot = self.snapshot.clone().unwrap();
+        let snapshot = self.snapshot.unwrap();
         let ratio = self.ratio;
 
         let fund_address = FundAddress {
