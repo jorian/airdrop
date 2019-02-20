@@ -14,7 +14,7 @@ fn main() {
             String::from("RU9F2EdDzUNK4LUMgjLTMDmtCmDK1a9vrY"),
             String::from("RYEufBcEUsofxwt4bGUdroRGmAQxBR8aJG")
         ])
-        .using_threshold(1.0) // all addresses need to contain at least 1 CHAIN
+        .using_threshold(1.0) // only include addresses that contain at least 1 CHAIN
         .take()
         .unwrap();
     
@@ -24,7 +24,7 @@ fn main() {
         .using_snapshot(&snapshot)
         .source_address("RQT7m4jcnWQxwqQQzh77WKNCuZotkRkAuk")
         .payout_ratio(0.75)
-        .configure()
+        .build()
         .unwrap();
     }
 ```
@@ -34,7 +34,7 @@ fn main() {
 - [ ] documentation
 - [ ] define static payout amount in addition to ratio
 - [ ] let the builder pattern work with Results (trait type?)
-- [ ] send back interest to fund_address
+- [ ] send back any remainders and/or interest to fund_address
 - [ ] calculate() shouldn't be a mut.. find better way to store dest_addresses
 - [ ] add P2SH inputs to support multisig airdrop
 - [x] airdrop take a reference to snapshot

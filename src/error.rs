@@ -23,7 +23,9 @@ pub enum ErrorKind {
     #[display(fmt = "Serde error.")]
     Serde(serde_json::error::Error),
     #[display(fmt = "Serde error.")]
-    AmbiguousConfig(String)
+    AmbiguousConfig(String),
+    #[display(fmt = "Serde error.")]
+    NotDefined(String)
 
     // addressindex not enabled
     // daemon not running
