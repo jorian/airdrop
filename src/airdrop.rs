@@ -38,8 +38,8 @@ pub struct Airdrop {
 
     snapshot: Snapshot,
     fund_address: FundAddress,
-    ratio: f64,
-    amount: u64,
+    ratio: Option<f64>,
+    amount: Option<u64>, //todo shouldn't airdrop just contain the balance to drop? precalculated?
     dest_addresses: Option<Vec<DestAddress>>,
 }
 
@@ -103,7 +103,31 @@ impl Airdrop {
                     interest += (verbose_tx.vout.get(utxo.output_index as usize).unwrap().interest * 100_000_000.0) as u64
                 }
             },
-            _ => ()
+            _ => {}
+        }
+
+        match (self.ratio, self.amount, self.fund_address.include_interest) {
+            (Some(ratio), None, false) if ratio == 1.0 => {
+                // airdrop total balance
+                // send interest back as change
+            },
+            (Some(ratio), None, false) if ratio < 1.0 => {
+                // apply ratio to balance
+                // send remaining balance + interest back as change
+            },
+            (Some(ratio), None, true) if ratio == 1.0 => {
+                // airdrop balance + interest
+                // nothing to send back
+            },
+            (Some(ratio), None, true) if ratio < 1.0 => {
+                // apply ratio to (balance + interest)
+                // send back change
+            },
+            (None, Some(amount), false) => {
+                // airdrop payout_amount
+                // send back remaining balance + interest
+            },
+            _ => { }
         }
 
         // add interest to balance
@@ -111,8 +135,13 @@ impl Airdrop {
             balance = balance + interest;
         }
 
-        // apply ratio:
-        balance = (balance as f64 * self.ratio) as u64;
+        // apply ratio or take payout_amount:
+        // todo what to do with interest? send it back.
+        match (self.ratio, self.amount) {
+            (Some(ratio), None) => balance = (balance as f64 * ratio) as u64,
+            (None, Some(amount)) => balance = amount,
+            _ => return Err(AirdropError::from(ErrorKind::NotDefined(String::from("Ratio or amount not defined"))))
+        }
 
         let snapshot_addresses = self.snapshot.addresses.clone();
         let denominator = snapshot_addresses.iter().fold(0, |acc, x| acc + ((x.amount * 100_000_000.0) as u64));
@@ -151,8 +180,8 @@ pub struct AirdropBuilder<'a> {
     address: String,
     multisig: bool,
     interest: bool,
-    ratio: f64,
-    amount: u64
+    ratio: Option<f64>,
+    amount: Option<u64>
 }
 
 // todo use a file with addresses as input, where file is able to be read by serde
@@ -187,7 +216,7 @@ impl<'a> AirdropBuilder<'a> {
 
     pub fn payout_ratio(&mut self, ratio: f64) -> &mut Self {
         if ratio > 0.0 && ratio <= 1.0 {
-            self.ratio = ratio;
+            self.ratio = Some(ratio);
         } else {
             panic!("Ratio must be a float in range from 0.0 up to and including 1.0.");
         }
@@ -196,18 +225,23 @@ impl<'a> AirdropBuilder<'a> {
     }
 
     pub fn payout_amount(&mut self, amount: f64) -> &mut Self {
-        self.amount = (amount * 100_000_000.0) as u64;
+        self.amount = Some((amount * 100_000_000.0) as u64);
 
         self
     }
 
+    /// To properly check this, `using_chain` must come before this function call
+    /// Anything other than KMD doesn't have interest.
     pub fn include_interest(&mut self, include: bool) -> &mut Self {
-        self.interest = include;
+        match self.chain {
+            Chain::KMD  => self.interest = include,
+            _           => self.interest = false,
+        }
 
         self
     }
 
-    pub fn configure(&self) -> Result<Airdrop, AirdropError> {
+    pub fn build(&self) -> Result<Airdrop, AirdropError> {
         let snapshot = self.snapshot.unwrap();
         let ratio = self.ratio;
 
@@ -220,8 +254,14 @@ impl<'a> AirdropBuilder<'a> {
         address_list.add(&self.address);
         let addressbalance = client.get_address_balance(&address_list)?.unwrap().balance;
 
-        if self.amount > addressbalance {
+        if self.amount.unwrap() > addressbalance {
             return Err(AirdropError::from(ErrorKind::BalanceInsufficient))
+        }
+
+        match (self.ratio, self.amount) {
+            (Some(r), Some(a)) =>
+                return Err(AirdropError::from(ErrorKind::AmbiguousConfig(String::from("Both ratio and payout_amount are defined")))),
+            _ => { }
         }
 
         let fund_address = FundAddress {
@@ -249,8 +289,8 @@ impl<'a> Default for AirdropBuilder<'a> {
             address: String::new(),
             multisig: false,
             interest: false,
-            ratio: 0.0,
-            amount: 0
+            ratio: Some(1.0),
+            amount: None
         }
     }
 }
