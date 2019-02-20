@@ -22,6 +22,8 @@ pub enum ErrorKind {
     ApiError(komodo_rpc_client::ApiError),
     #[display(fmt = "Serde error.")]
     Serde(serde_json::error::Error),
+    #[display(fmt = "Serde error.")]
+    AmbiguousConfig(String)
 
     // addressindex not enabled
     // daemon not running

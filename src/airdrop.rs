@@ -1,4 +1,4 @@
-/*
+/**
 
 Airdrop
 -------
@@ -22,6 +22,9 @@ use crate::snapshot::Snapshot;
 use crate::error::AirdropError;
 use komodo_rpc_client::AddressUtxos;
 use serde_json;
+use komodo_rpc_client::AddressList;
+use komodo_rpc_client::ApiError;
+use crate::error::ErrorKind;
 
 
 // holds inputs to an airdrop transaction
@@ -36,6 +39,7 @@ pub struct Airdrop {
     snapshot: Snapshot,
     fund_address: FundAddress,
     ratio: f64,
+    amount: u64,
     dest_addresses: Option<Vec<DestAddress>>,
 }
 
@@ -45,6 +49,7 @@ impl Airdrop {
         Default::default()
     }
 
+    /// Prints the string that is needed for the `signrawtransaction` RPC
     pub fn signing_string(&self) -> Result<String, AirdropError> {
         // should return a string to sign
         // multisig should include P2SH inputs.
@@ -146,7 +151,8 @@ pub struct AirdropBuilder<'a> {
     address: String,
     multisig: bool,
     interest: bool,
-    ratio: f64
+    ratio: f64,
+    amount: u64
 }
 
 // todo use a file with addresses as input, where file is able to be read by serde
@@ -189,6 +195,12 @@ impl<'a> AirdropBuilder<'a> {
         self
     }
 
+    pub fn payout_amount(&mut self, amount: f64) -> &mut Self {
+        self.amount = (amount * 100_000_000.0) as u64;
+
+        self
+    }
+
     pub fn include_interest(&mut self, include: bool) -> &mut Self {
         self.interest = include;
 
@@ -198,6 +210,19 @@ impl<'a> AirdropBuilder<'a> {
     pub fn configure(&self) -> Result<Airdrop, AirdropError> {
         let snapshot = self.snapshot.unwrap();
         let ratio = self.ratio;
+
+        let client = match &self.chain {
+            Chain::KMD => komodo_rpc_client::Client::new_komodo_client(),
+            _ => komodo_rpc_client::Client::new_assetchain_client(&self.chain)
+        }?;
+
+        let mut address_list = AddressList::new();
+        address_list.add(&self.address);
+        let addressbalance = client.get_address_balance(&address_list)?.unwrap().balance;
+
+        if self.amount > addressbalance {
+            return Err(AirdropError::from(ErrorKind::BalanceInsufficient))
+        }
 
         let fund_address = FundAddress {
             address: self.address.clone(),
@@ -210,6 +235,7 @@ impl<'a> AirdropBuilder<'a> {
             fund_address,
             snapshot: snapshot.clone(),
             ratio,
+            amount: self.amount,
             dest_addresses: None
         })
     }
@@ -223,7 +249,8 @@ impl<'a> Default for AirdropBuilder<'a> {
             address: String::new(),
             multisig: false,
             interest: false,
-            ratio: 0.0
+            ratio: 0.0,
+            amount: 0
         }
     }
 }
