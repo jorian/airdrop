@@ -29,12 +29,15 @@ fn main() {
     }
 ```
 
+##### notes:
+- ratio is applied to both balance and interest. any change includes interest against the same ratio
+
 ##### todo:
 
 - [ ] documentation
-- [ ] define static payout amount in addition to ratio
+- [x] define static payout amount in addition to ratio
 - [ ] let the builder pattern work with Results (trait type?)
-- [ ] send back any remainders and/or interest to fund_address
+- [x] send back any remainders and/or interest to fund_address
 - [ ] calculate() shouldn't be a mut.. find better way to store dest_addresses
 - [ ] add P2SH inputs to support multisig airdrop
 - [x] airdrop take a reference to snapshot

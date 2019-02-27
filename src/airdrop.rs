@@ -38,7 +38,7 @@ pub struct Airdrop {
     snapshot: Snapshot,
     fund_address: FundAddress,
     ratio: Option<f64>,
-    amount: Option<u64>, //todo shouldn't airdrop just contain the balance to drop? precalculated?
+    amount: Option<u64>,
     dest_addresses: Option<Vec<DestAddress>>,
 }
 
@@ -73,7 +73,7 @@ impl Airdrop {
             dbg!(joined);
         }
 
-        Ok(String::new())
+        Ok(String::new()) //todo return actual string
     }
 
     pub fn calculate(&mut self) -> Result<(), AirdropError> {
@@ -110,6 +110,8 @@ impl Airdrop {
 
         let snapshot_addresses = self.snapshot.addresses.clone();
         let denominator = snapshot_addresses.iter().fold(0, |acc, x| acc + ((x.amount * 100_000_000.0) as u64));
+
+        dbg!(&self.amount);
 
         match (self.ratio, self.amount, self.fund_address.include_interest) {
             (Some(ratio), None, false) if ratio == 1.0 => {
@@ -213,6 +215,31 @@ impl Airdrop {
                 dest_addresses.push(DestAddress {
                     address: self.fund_address.address.clone(),
                     amount: (change + interest)
+                });
+
+                self.dest_addresses = Some(dest_addresses);
+            },
+            (None, Some(amount), true) => {
+                // airdrop payout_amount + interest
+                // send back remaining balance
+
+                dbg!(balance);
+
+                let airdrop_amt = amount;
+                let change = balance - airdrop_amt;
+                let airdrop_amt = airdrop_amt + interest;
+
+                let mut dest_addresses = vec![];
+                for addr in snapshot_addresses {
+                    dest_addresses.push(DestAddress {
+                        address: addr.addr,
+                        amount: ((airdrop_amt as f64) * (addr.amount * 100_000_000.0) / denominator as f64) as u64,
+                    });
+                }
+
+                dest_addresses.push(DestAddress {
+                    address: self.fund_address.address.clone(),
+                    amount: change
                 });
 
                 self.dest_addresses = Some(dest_addresses);
@@ -355,7 +382,7 @@ impl<'a> Default for AirdropBuilder<'a> {
             address: String::new(),
             multisig: false,
             interest: false,
-            ratio: Some(1.0),
+            ratio: None,
             amount: None
         }
     }
