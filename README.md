@@ -38,9 +38,9 @@ fn main() {
 - [x] define static payout amount in addition to ratio
 - [ ] let the builder pattern work with Results (trait type?)
 - [x] send back any remainders and/or interest to fund_address
-- [ ] calculate() shouldn't be a mut.. find better way to store dest_addresses
 - [ ] add P2SH inputs to support multisig airdrop
 - [x] airdrop take a reference to snapshot
+- [ ] use JSON file as input to Airdrop
 
 ##### long term maybe's:
 - [ ] serialize multisig raw tx for easy multiparty signing

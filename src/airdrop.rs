@@ -1,21 +1,3 @@
-/**
-
-Airdrop
--------
-
-- from snapshot
-- from list of addresses
-- define from-address
-- define percentage / fixed amount to airdrop
-- define which coin to airdrop (KMD or assetchain)
-
-- z-support?
-
-- assumes there are two blockchains running and synced:
-    - the one where the snapshot takes place (usually an assetchain)
-    - the one from where the funds are airdropped (mostly KMD)
-*/
-
 use komodo_rpc_client::KomodoRpcApi;
 use komodo_rpc_client::Chain;
 use crate::snapshot::Snapshot;
@@ -30,7 +12,7 @@ use crate::error::ErrorKind;
 // and holds outputs to that transaction, i.e., the participants in the airdrop
 // in case of a non-multisig, it should be able to sign and broadcast (sign with wallet)
 // in case of a multisig, it should be able to print the required signrawtransaction (done manually)
-//   this string could (should) eventually have a wrapper for easy sharing and signing
+// this string could (should) eventually have a wrapper for easy sharing and signing
 pub struct Airdrop {
     // todo CreateRawTransactionInputs?
     // todo Option<P2SH_Inputs>?
@@ -48,7 +30,7 @@ impl Airdrop {
         Default::default()
     }
 
-    /// Prints the string that is needed for the `signrawtransaction` RPC
+    /// Prints the string that is needed for the `signrawtransaction` komodod RPC
     pub fn signing_string(&self) -> Result<String, AirdropError> {
         // should return a string to sign
         // multisig should include P2SH inputs.
@@ -277,18 +259,21 @@ pub struct AirdropBuilder<'a> {
 // todo use a file with addresses as input, where file is able to be read by serde
 // todo how to throw errors in a builder pattern?
 impl<'a> AirdropBuilder<'a> {
+    /// Specifies the blockchain to perform an airdrop on.
     pub fn using_chain(&mut self, chain: Chain) -> &mut Self {
         self.chain = chain;
 
         self
     }
 
+    /// Sets the snapshot to be used in the airdrop.
     pub fn using_snapshot(&mut self, snapshot: &'a Snapshot) -> &mut Self {
         self.snapshot = Some(snapshot);
 
         self
     }
 
+    /// Specifies the address that holds the funds to airdrop.
     pub fn fund_address(&mut self, source: &str) -> &mut Self {
         if source.len() != 34 {
             panic!("Source address length must be 34 chars.")
@@ -304,6 +289,14 @@ impl<'a> AirdropBuilder<'a> {
         self
     }
 
+    /// Apply a ratio to the balance of the [fund_address](Airdrop::fund_address) to use in the airdrop
+    /// calculation. Setting a ratio of 0.8 airdrops 80% of the funds in the [fund_address](Airdrop::fund_address).
+    ///
+    /// The ratio also applies to interest, if set. Using the same ratio of 0.8, 80% of the interest is airdropped,
+    /// the remaining interest is included in the change, back to the [fund_address](Airdrop::fund_address).
+    ///
+    /// Panics if a zero or negative ratio or a ratio more than 1.0 is supplied.
+    /// Panics if used together with [payout_amount](AirdropBuilder::payout_amount)
     pub fn payout_ratio(&mut self, ratio: f64) -> &mut Self {
         if ratio > 0.0 && ratio <= 1.0 {
             self.ratio = Some(ratio);
@@ -314,14 +307,18 @@ impl<'a> AirdropBuilder<'a> {
         self
     }
 
+    /// Specify a fixed amount to use as input for the airdrop. If [interest](AirdropBuilder::include_interest) is included, 100% of the
+    /// interest will be included in the funds to airdrop. Any change does not include interest.
+    ///
+    /// Panics if used together with [payout_ratio](AirdropBuilder::payout_ratio)
     pub fn payout_amount(&mut self, amount: f64) -> &mut Self {
         self.amount = Some((amount * 100_000_000.0) as u64);
 
         self
     }
 
-    /// To properly check this, `using_chain` must come before this function call
-    /// Anything other than KMD doesn't have interest.
+    /// To properly check this, [using_chain()](AirdropBuilder::using_chain) must come before this function call.
+    /// Will be ignored if set on anything other than KMD.
     pub fn include_interest(&mut self, include: bool) -> &mut Self {
         match self.chain {
             Chain::KMD  => self.interest = include,

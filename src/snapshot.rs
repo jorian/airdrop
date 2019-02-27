@@ -6,6 +6,10 @@ use std::default::Default;
 use crate::error::AirdropError;
 use crate::error::ErrorKind;
 
+/// Ultimately holds the details of a snapshot, performed on a Komodo (asset)chain.
+///
+/// The snapshot can be used to perform an Airdrop.
+
 #[derive(Debug, Clone)]
 pub struct Snapshot {
     pub chain: Chain,
@@ -33,11 +37,13 @@ impl Snapshot {
 }
 
 impl SnapshotBuilder {
+    /// Specify the Komodo (asset)chain to take a snapshot from.
     pub fn on_chain(&mut self, chain: Chain) -> &mut Self {
         self.chain = chain;
         self
     }
 
+    /// Set a threshold, such that all addresses contain at least the specified threshold.
     pub fn using_threshold(&mut self, threshold: f64) -> &mut Self {
         self.threshold = threshold;
         self
@@ -50,11 +56,13 @@ impl SnapshotBuilder {
         self
     }
 
+    /// Removes the addresses specified here from the Snapshot, if they exist in the Snapshot.
     pub fn exclude_addresses(&mut self, addresses: Vec<String>) -> &mut Self {
         self.excluded_addresses = Some(addresses);
         self
     }
 
+    /// Builds a Snapshot struct. Here is where the threshold is applied and excluded addresses are removed, if any.
     pub fn build(&self) -> Result<Snapshot, AirdropError> {
         // a lot of code to do a snapshot, using komodod
         let client = match &self.chain {
