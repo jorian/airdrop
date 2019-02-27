@@ -87,8 +87,7 @@ impl Airdrop {
         let mut address_list = komodo_rpc_client::AddressList::new();
         address_list.add(&self.fund_address.address);
 
-        let utxoset = fund_client.get_address_utxos(&address_list)?
-            .unwrap();
+        let utxoset = fund_client.get_address_utxos(&address_list)?;
 
         // get total balance of all utxos
         let mut balance = utxoset.0.iter()
@@ -100,7 +99,7 @@ impl Airdrop {
             Chain::KMD => {
                 for utxo in utxoset.0 {
                     let verbose_tx = fund_client.get_raw_transaction_verbose(
-                        komodo_rpc_client::TransactionId::from_hex(&utxo.txid).unwrap())?.unwrap();
+                        komodo_rpc_client::TransactionId::from_hex(&utxo.txid).unwrap())?;
 
                     interest += (verbose_tx.vout.get(utxo.output_index as usize).unwrap().interest * 100_000_000.0) as u64
                 }
@@ -261,7 +260,7 @@ impl Airdrop {
         address_list.add(&self.fund_address.address);
         let utxo_set = client.get_address_utxos(&address_list)?;
 
-        Ok(utxo_set.unwrap())
+        Ok(utxo_set)
     }
 }
 
@@ -343,7 +342,7 @@ impl<'a> AirdropBuilder<'a> {
 
         let mut address_list = AddressList::new();
         address_list.add(&self.address);
-        let addressbalance = client.get_address_balance(&address_list)?.unwrap().balance;
+        let addressbalance = client.get_address_balance(&address_list)?.balance;
 
         if let Some(amount) = self.amount {
             if addressbalance < amount {

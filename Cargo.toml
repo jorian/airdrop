@@ -7,6 +7,6 @@ edition = "2018"
 license = "MIT"
 
 [dependencies]
-komodo_rpc_client = { git = "https://github.com/n41r0j/komodorpc-rust-client" }
+komodo_rpc_client = { git = "https://github.com/n41r0j/komodorpc-rust-client", branch = "no_option" }
 derive_more = "0.14"
 serde_json = "1.0"

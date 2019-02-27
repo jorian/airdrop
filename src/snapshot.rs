@@ -66,7 +66,7 @@ impl SnapshotBuilder {
         let mut snapshot = match self.max_addresses {
             Some(max) => client.get_snapshot_max(max),
             None => client.get_snapshot()
-        }?.unwrap();
+        }?;
 
         if snapshot.addresses.is_empty() {
             return Err(ErrorKind::EmptySnapshot.into())
