@@ -23,7 +23,6 @@ use crate::error::AirdropError;
 use komodo_rpc_client::AddressUtxos;
 use serde_json;
 use komodo_rpc_client::AddressList;
-use komodo_rpc_client::ApiError;
 use crate::error::ErrorKind;
 
 
@@ -188,6 +187,11 @@ impl Airdrop {
                         amount: ((airdrop_amt as f64) * (addr.amount * 100_000_000.0) / denominator as f64) as u64,
                     });
                 };
+
+                dest_addresses.push(DestAddress {
+                    address: self.fund_address.address.clone(),
+                    amount: change
+                });
 
                 self.dest_addresses = Some(dest_addresses);
             },

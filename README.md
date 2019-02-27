@@ -15,7 +15,7 @@ fn main() {
             String::from("RYEufBcEUsofxwt4bGUdroRGmAQxBR8aJG")
         ])
         .using_threshold(1.0) // only include addresses that contain at least 1 CHAIN
-        .take()
+        .build()
         .unwrap();
     
     let airdrop = komodo_airdrop::Airdrop::builder()
