@@ -31,31 +31,51 @@ impl Airdrop {
     }
 
     /// Prints the string that is needed for the `signrawtransaction` komodod RPC
-    pub fn signing_string(&self) -> Result<String, AirdropError> {
+    pub fn signing_string(&self, redeem_script: Option<String>) -> Result<String, AirdropError> {
         // should return a string to sign
+
         // multisig should include P2SH inputs.
+        // for every utxo in the utxoset todo not really every utxo
 
         let utxoset = self.get_current_utxoset()?;
 
-        let mut inputs = komodo_rpc_client::arguments::CreateRawTransactionInputs::new();
-        for utxo in utxoset.0 {
-            inputs.add(&utxo.txid, utxo.output_index);
-        }
+        let mut inputs = komodo_rpc_client::arguments::CreateRawTransactionInputs::from(&utxoset);
 
         let mut outputs = komodo_rpc_client::arguments::CreateRawTransactionOutputs::new();
         for payout_addresses in &self.dest_addresses.clone().unwrap() {
             outputs.add(&payout_addresses.address.clone(), payout_addresses.amount as f64 / 100_000_000.0);
         }
 
-        if self.fund_address.multisig == false {
-            let inputs_str = serde_json::to_string(&inputs)?;
-            let outputs_str = serde_json::to_string(&outputs)?;
+        let inputs_str = serde_json::to_string(&inputs)?;
+        let outputs_str = serde_json::to_string(&outputs)?;
 
-            let joined = format!("{} {}", inputs_str, outputs_str);
-            dbg!(joined);
+//        let mut joined = format!("{} {}", inputs_str, outputs_str);
+        let mut joined= String::new();
+
+        if self.fund_address.multisig == true {
+            if let Some(redeem_script) = redeem_script {
+                let p2sh_input_set = komodo_rpc_client::P2SHInputSetBuilder::from(&utxoset)
+                    .set_redeem_script(redeem_script)
+                    .build()?;
+
+                let p2sh_str = serde_json::to_string(&p2sh_input_set.0)?;
+                joined = format!("{} {}", joined, p2sh_str);
+            }
         }
 
-        Ok(String::new()) //todo return actual string
+        let fund_client = match &self.fund_address.dest_chain {
+            Chain::KMD => komodo_rpc_client::Client::new_komodo_client(),
+            _ => komodo_rpc_client::Client::new_assetchain_client(&self.fund_address.dest_chain)
+        }?;
+
+        let mut crawtx = fund_client.create_raw_transaction(inputs, outputs)?;
+        dbg!(&crawtx);
+        crawtx.set_locktime();
+        dbg!(&crawtx);
+
+        joined = format!("{} \"{}\"", crawtx.0, joined);
+
+        Ok(joined)
     }
 
     pub fn calculate(&mut self) -> Result<(), AirdropError> {
@@ -91,8 +111,6 @@ impl Airdrop {
 
         let snapshot_addresses = self.snapshot.addresses.clone();
         let denominator = snapshot_addresses.iter().fold(0, |acc, x| acc + ((x.amount * 100_000_000.0) as u64));
-
-        dbg!(&self.amount);
 
         match (self.ratio, self.amount, self.fund_address.include_interest) {
             (Some(ratio), None, false) if ratio == 1.0 => {
@@ -236,7 +254,6 @@ impl Airdrop {
             Chain::KMD => komodo_rpc_client::Client::new_komodo_client(),
             _ => komodo_rpc_client::Client::new_assetchain_client(&self.fund_address.dest_chain)
         }?;
-
 
         let mut address_list = komodo_rpc_client::AddressList::new();
         address_list.add(&self.fund_address.address);

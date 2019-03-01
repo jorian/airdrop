@@ -38,9 +38,14 @@ fn main() {
 - [x] define static payout amount in addition to ratio
 - [ ] let the builder pattern work with Results (trait type?)
 - [x] send back any remainders and/or interest to fund_address
-- [ ] add P2SH inputs to support multisig airdrop
+- [x] add P2SH inputs to support multisig airdrop
 - [x] airdrop take a reference to snapshot
 - [ ] use JSON file as input to Airdrop
+- [ ] only include necessary utxos as input to the transaction, to prevent using all utxos when it's not needed since the required amount to airdrop has been reached.
+    - [ ] what about interest? if KMD && interest_included then spend all inputs to include all interest.
+    - [ ] else spend only required utxos
+        - with some kind of ordering of utxos to only use largest utxos
+- [ ] use a global komodod daemon client instead of instantiating it a couple of times.
 
 ##### long term maybe's:
 - [ ] serialize multisig raw tx for easy multiparty signing
