@@ -7,16 +7,9 @@ use serde_json;
 use komodo_rpc_client::AddressList;
 use crate::error::ErrorKind;
 
-
-// holds inputs to an airdrop transaction
-// and holds outputs to that transaction, i.e., the participants in the airdrop
-// in case of a non-multisig, it should be able to sign and broadcast (sign with wallet)
-// in case of a multisig, it should be able to print the required signrawtransaction (done manually)
-// this string could (should) eventually have a wrapper for easy sharing and signing
+// does not hold any inputs to a transaction: especially in the case of KMD, interest needs to be calculated right before
+// an airdrop takes place
 pub struct Airdrop {
-    // todo CreateRawTransactionInputs?
-    // todo Option<P2SH_Inputs>?
-
     snapshot: Snapshot,
     fund_address: FundAddress,
     ratio: Option<f64>,
@@ -30,15 +23,12 @@ impl Airdrop {
         Default::default()
     }
 
-    /// Prints the string that is needed for the `signrawtransaction` komodod RPC
+    /// Does a `createrawtransaction` RPC to the running daemon to create a raw transaction and uses the resulting hex to
+    /// print the string that is needed for the `signrawtransaction` komodod RPC
+    ///
+    /// Because of multisig, signing is done manually
     pub fn signing_string(&self, redeem_script: Option<String>) -> Result<String, AirdropError> {
-        // should return a string to sign
-
-        // multisig should include P2SH inputs.
-        // for every utxo in the utxoset todo not really every utxo
-
         let utxoset = self.get_current_utxoset()?;
-
         let mut inputs = komodo_rpc_client::arguments::CreateRawTransactionInputs::from(&utxoset);
 
         let mut outputs = komodo_rpc_client::arguments::CreateRawTransactionOutputs::new();
@@ -46,10 +36,6 @@ impl Airdrop {
             outputs.add(&payout_addresses.address.clone(), payout_addresses.amount as f64 / 100_000_000.0);
         }
 
-        let inputs_str = serde_json::to_string(&inputs)?;
-        let outputs_str = serde_json::to_string(&outputs)?;
-
-//        let mut joined = format!("{} {}", inputs_str, outputs_str);
         let mut joined= String::new();
 
         if self.fund_address.multisig == true {
@@ -59,7 +45,7 @@ impl Airdrop {
                     .build()?;
 
                 let p2sh_str = serde_json::to_string(&p2sh_input_set.0)?;
-                joined = format!("{} {}", joined, p2sh_str);
+                joined = format!("{}", p2sh_str);
             }
         }
 
@@ -69,11 +55,9 @@ impl Airdrop {
         }?;
 
         let mut crawtx = fund_client.create_raw_transaction(inputs, outputs)?;
-        dbg!(&crawtx);
         crawtx.set_locktime();
-        dbg!(&crawtx);
 
-        joined = format!("{} \"{}\"", crawtx.0, joined);
+        joined = format!("{} \"{}\" \"[<WIF HERE>]\"", crawtx.0, joined);
 
         Ok(joined)
     }

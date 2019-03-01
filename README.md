@@ -65,6 +65,8 @@ to create a string that can be used as parameter string for the `signrawtransact
     - [ ] else spend only required utxos
         - with some kind of ordering of utxos to only use largest utxos
 - [ ] use a global komodod daemon client instead of instantiating it a couple of times.
+- [ ] use an Enum for `ratio` and `amount` in `Airdrop`
 
 ##### long term maybe's:
 - [ ] serialize multisig raw tx for easy multiparty signing
+    - would likely be separate crate
