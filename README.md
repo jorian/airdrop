@@ -54,6 +54,7 @@ to create a string that can be used as parameter string for the `signrawtransact
 ##### todo:
 
 - [ ] documentation
+    - [ ] why this airdrop crate is needed: KMD platform addresses are the same etc, so the only differentiator is an AC
 - [x] define static payout amount in addition to ratio
 - [ ] let the builder pattern work with Results (trait type?)
 - [x] send back any remainders and/or interest to fund_address
@@ -66,7 +67,7 @@ to create a string that can be used as parameter string for the `signrawtransact
         - with some kind of ordering of utxos to only use largest utxos
 - [ ] use a global komodod daemon client instead of instantiating it a couple of times.
 - [ ] use an Enum for `ratio` and `amount` in `Airdrop`
-
+- [ ] Enum: add nonexhaustive to not have a breaking change when adding a new Enum variant
 ##### long term maybe's:
 - [ ] serialize multisig raw tx for easy multiparty signing
     - would likely be separate crate
