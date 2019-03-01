@@ -12,8 +12,9 @@ use crate::error::ErrorKind;
 pub struct Airdrop {
     snapshot: Snapshot,
     fund_address: FundAddress,
-    ratio: Option<f64>,
-    amount: Option<u64>,
+    payout: Payout,
+//    ratio: Option<f64>,
+//    amount: Option<u64>,
     dest_addresses: Option<Vec<DestAddress>>,
 }
 
@@ -45,7 +46,7 @@ impl Airdrop {
                     .build()?;
 
                 let p2sh_str = serde_json::to_string(&p2sh_input_set.0)?;
-                joined = format!("{}", p2sh_str);
+                joined = format!("\"{}\" \"[\"<WIF HERE>\"]\"", p2sh_str);
             }
         }
 
@@ -57,7 +58,7 @@ impl Airdrop {
         let mut crawtx = fund_client.create_raw_transaction(inputs, outputs)?;
         crawtx.set_locktime();
 
-        joined = format!("{} \"{}\" \"[<WIF HERE>]\"", crawtx.0, joined);
+        joined = format!("{} {}", crawtx.0, joined);
 
         Ok(joined)
     }
@@ -92,27 +93,8 @@ impl Airdrop {
         // this long match statement is needed for several scenarios:
         // - apply ratio or use amount,
         // - include interest
-        match (self.ratio, self.amount, self.fund_address.include_interest) {
-            (Some(ratio), None, false) if ratio == 1.0 => {
-                // airdrop total balance
-                // send interest back to fund_address
-
-                let mut dest_addresses = vec![];
-                for addr in snapshot_addresses {
-                    dest_addresses.push(DestAddress {
-                        address: addr.addr,
-                        amount: ((balance as f64) * (addr.amount * 100_000_000.0) / denominator as f64) as u64,
-                    });
-                }
-
-                dest_addresses.push(DestAddress {
-                    address: self.fund_address.address.clone(),
-                    amount: interest
-                });
-
-                self.dest_addresses = Some(dest_addresses);
-            },
-            (Some(ratio), None, false) if ratio < 1.0 => {
+        match (&self.payout, self.fund_address.include_interest) {
+            (Payout::Ratio(ratio), false) => {
                 // apply ratio to balance
                 // send remaining balance + interest back as change
 
@@ -132,26 +114,10 @@ impl Airdrop {
                     amount: (change + interest)
                 });
 
-                self.dest_addresses = Some(dest_addresses);
-            },
-            (Some(ratio), None, true) if ratio == 1.0 => {
-                // add interest to balance
-                // airdrop balance
-                // nothing to send back
-
-                balance = balance + interest;
-
-                let mut dest_addresses = vec![];
-                for addr in snapshot_addresses {
-                    dest_addresses.push(DestAddress {
-                        address: addr.addr,
-                        amount: ((balance as f64) * (addr.amount * 100_000_000.0) / denominator as f64) as u64,
-                    });
-                };
 
                 self.dest_addresses = Some(dest_addresses);
             },
-            (Some(ratio), None, true) if ratio < 1.0 => {
+            (Payout::Ratio(ratio), true) => {
                 // add interest to balance
                 // apply ratio to (balance + interest)
                 // send back change
@@ -169,18 +135,20 @@ impl Airdrop {
                     });
                 };
 
-                dest_addresses.push(DestAddress {
-                    address: self.fund_address.address.clone(),
-                    amount: change
-                });
+                if change > 0 {
+                    dest_addresses.push(DestAddress {
+                        address: self.fund_address.address.clone(),
+                        amount: change
+                    });
+                }
 
                 self.dest_addresses = Some(dest_addresses);
             },
-            (None, Some(amount), false) => {
+            (Payout::Amount(amount), false) => {
                 // airdrop payout_amount
                 // send back remaining balance + interest
 
-                let airdrop_amt = amount;
+                let airdrop_amt = *amount;
                 let change = balance - airdrop_amt;
 
                 let mut dest_addresses = vec![];
@@ -198,11 +166,11 @@ impl Airdrop {
 
                 self.dest_addresses = Some(dest_addresses);
             },
-            (None, Some(amount), true) => {
+            (Payout::Amount(amount), true) => {
                 // airdrop payout_amount + interest
                 // send back remaining balance
 
-                let airdrop_amt = amount;
+                let airdrop_amt = *amount;
                 let change = balance - airdrop_amt;
                 let airdrop_amt = airdrop_amt + interest;
 
@@ -340,10 +308,12 @@ impl<'a> AirdropBuilder<'a> {
             }
         }
 
+        let payout: Payout;
         match (self.ratio, self.amount) {
-            (Some(_r), Some(_a)) =>
-                return Err(AirdropError::from(ErrorKind::AmbiguousConfig(String::from("Both ratio and payout_amount are defined")))),
-            _ => { }
+            (Some(ratio), None) => payout = Payout::Ratio(ratio),
+            (None, Some(amount)) => payout = Payout::Amount(amount),
+            (Some(_r), Some(_a)) => return Err(AirdropError::from(ErrorKind::AmbiguousConfig(String::from("Both ratio and payout_amount are defined")))),
+            _ => return Err(AirdropError::from(ErrorKind::AmbiguousConfig(String::from("Neither ratio or payout_amount are defined")))),
         }
 
         let fund_address = FundAddress {
@@ -356,8 +326,7 @@ impl<'a> AirdropBuilder<'a> {
         Ok(Airdrop {
             fund_address,
             snapshot: snapshot.clone(),
-            ratio,
-            amount: self.amount,
+            payout,
             dest_addresses: None
         })
     }
@@ -400,4 +369,9 @@ impl Default for FundAddress {
             multisig: false,
         }
     }
+}
+
+enum Payout {
+    Ratio(f64),
+    Amount(u64)
 }
