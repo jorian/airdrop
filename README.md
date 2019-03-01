@@ -1,7 +1,7 @@
 Komodo Airdrop
 ==============
 
-This Airdrop crate makes it fairly easy to perform an airdrop from a Komodo Platform Assetchain, using KMD or any other assetchain.
+This Airdrop crate makes it easy to perform an airdrop from a Komodo Platform Assetchain, using KMD or any other assetchain.
 
 ```rust
 extern crate komodo_airdrop;    
@@ -22,12 +22,31 @@ fn main() {
         .using_chain(Chain::KMD)
         .include_interest(true)
         .using_snapshot(&snapshot)
-        .source_address("RQT7m4jcnWQxwqQQzh77WKNCuZotkRkAuk")
+        .fund_address("RQT7m4jcnWQxwqQQzh77WKNCuZotkRkAuk")
         .payout_ratio(0.75)
         .build()
         .unwrap();
-    }
+}
 ```
+
+If an airdrop happens from a multisig address (starts with `b`):
+
+```rust
+let signing_string = airdrop.signing_string(Some(String::from("<redeem_script here>")));
+println!("{}", signing_string);
+
+```
+
+
+If not:
+
+```rust
+let signing_string = airdrop.signing_string(None);
+println!("{}", signing_string);   
+```
+    
+`signing_string` creates a raw transaction from the inputs of all utxos in the `fund_address`, and uses the resulting hex (a running daemon of the fund_address blockchain is required)
+to create a string that can be used as parameter string for the `signrawtransaction` daemon RPC, where in case of a multisig, a private key (WIF) needs to be supplied manually by the signer.
 
 ##### notes:
 - ratio is applied to both balance and interest. any change includes interest against the same ratio
