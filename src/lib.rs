@@ -16,18 +16,26 @@
 //! ## Airdrop
 //!
 //! The airdrop functionality allows to specify a Komodo (asset)chain and do an airdrop on that chain using a Snapshot.
+//! ### Why is this a useful tool?
+//!
+//! The Komodo platform allows anyone to create a blockchain. Every new blockchain is a runtime fork of the Komodo
+//! blockchain, which means that these new blockchains inherit almost all functionalities from Komodo, including
+//! address formats.
+//! This allows the addresses in a snapshot to be used as an input on another blockchain within the platform, since
+//! the private key to these addresses work throughout the Komodo platform and always lead to the same address.
+//!
+//! ### Notes
 //! An airdrop (for now) only takes a Snapshot as input. In the future, a JSON file as input will be supported.
 //!
-//! Some extra properties that can be specified:
+//! ### Features
 //! - Define a fund address that holds the coins to airdrop
 //! - Airdrop a percentage of the fund address's funds, by applying a ratio between 0.0 and 1.0
 //! - Airdrop a specific amount from the fund address
 //! - Whether to include interest in the airdrop (KMD only)
 //!
 //! Assumes there are two blockchains running and synced:
-//!  - the one where the snapshot takes place (usually an assetchain)
+//!  - the one where the snapshot is taken (usually an assetchain)
 //!  - the one from where the funds are airdropped (mostly KMD)
-
 
 #![feature(drain_filter)]
 extern crate komodo_rpc_client;

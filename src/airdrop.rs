@@ -29,7 +29,7 @@ impl Airdrop {
     /// Because of multisig, signing is done manually
     pub fn signing_string(&self, redeem_script: Option<String>) -> Result<String, AirdropError> {
         let utxoset = self.get_current_utxoset()?;
-        let mut inputs = komodo_rpc_client::arguments::CreateRawTransactionInputs::from(&utxoset);
+        let inputs = komodo_rpc_client::arguments::CreateRawTransactionInputs::from(&utxoset);
 
         let mut outputs = komodo_rpc_client::arguments::CreateRawTransactionOutputs::new();
         for payout_addresses in &self.dest_addresses.clone().unwrap() {
@@ -63,17 +63,9 @@ impl Airdrop {
     }
 
     pub fn calculate(&mut self) -> Result<(), AirdropError> {
-        // get a client
-        let fund_client = match &self.fund_address.dest_chain {
-            Chain::KMD => komodo_rpc_client::Client::new_komodo_client(),
-            _ => komodo_rpc_client::Client::new_assetchain_client(&self.fund_address.dest_chain)
-        }?;
 
         // get the utxos for the fund_address
-        let mut address_list = komodo_rpc_client::AddressList::new();
-        address_list.add(&self.fund_address.address);
-
-        let utxoset = fund_client.get_address_utxos(&address_list)?;
+        let utxoset = self.get_current_utxoset()?;
 
         // get total balance of all utxos
         let mut balance = utxoset.0.iter()
@@ -83,8 +75,10 @@ impl Airdrop {
         let mut interest = 0;
         match self.fund_address.dest_chain {
             Chain::KMD => {
+                let client = komodo_rpc_client::Client::new_komodo_client()?;
+
                 for utxo in utxoset.0 {
-                    let verbose_tx = fund_client.get_raw_transaction_verbose(
+                    let verbose_tx = client.get_raw_transaction_verbose(
                         komodo_rpc_client::TransactionId::from_hex(&utxo.txid).unwrap())?;
 
                     interest += (verbose_tx.vout.get(utxo.output_index as usize).unwrap().interest * 100_000_000.0) as u64
@@ -96,6 +90,9 @@ impl Airdrop {
         let snapshot_addresses = self.snapshot.addresses.clone();
         let denominator = snapshot_addresses.iter().fold(0, |acc, x| acc + ((x.amount * 100_000_000.0) as u64));
 
+        // this long match statement is needed for several scenarios:
+        // - apply ratio or use amount,
+        // - include interest
         match (self.ratio, self.amount, self.fund_address.include_interest) {
             (Some(ratio), None, false) if ratio == 1.0 => {
                 // airdrop total balance
@@ -206,8 +203,6 @@ impl Airdrop {
                 // airdrop payout_amount + interest
                 // send back remaining balance
 
-                dbg!(balance);
-
                 let airdrop_amt = amount;
                 let change = balance - airdrop_amt;
                 let airdrop_amt = airdrop_amt + interest;
@@ -227,7 +222,7 @@ impl Airdrop {
 
                 self.dest_addresses = Some(dest_addresses);
             },
-            _ => panic!("both ratio and amount not valid!")
+            _ => panic!("ratio or amount not valid!")
         }
 
         Ok(())
@@ -257,8 +252,6 @@ pub struct AirdropBuilder<'a> {
     amount: Option<u64>
 }
 
-// todo use a file with addresses as input, where file is able to be read by serde
-// todo how to throw errors in a builder pattern?
 impl<'a> AirdropBuilder<'a> {
     /// Specifies the blockchain to perform an airdrop on.
     pub fn using_chain(&mut self, chain: Chain) -> &mut Self {
@@ -318,7 +311,7 @@ impl<'a> AirdropBuilder<'a> {
         self
     }
 
-    /// To properly check this, [using_chain()](AirdropBuilder::using_chain) must come before this function call.
+    /// To properly check this, [using_chain()](AirdropBuilder::using_chain) must be specified before this function is called.
     /// Will be ignored if set on anything other than KMD.
     pub fn include_interest(&mut self, include: bool) -> &mut Self {
         match self.chain {

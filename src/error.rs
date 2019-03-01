@@ -22,13 +22,11 @@ pub enum ErrorKind {
     ApiError(komodo_rpc_client::ApiError),
     #[display(fmt = "Serde error.")]
     Serde(serde_json::error::Error),
-    #[display(fmt = "Serde error.")]
+    #[display(fmt = "Ambiguous setup.")]
     AmbiguousConfig(String),
-    #[display(fmt = "Serde error.")]
-    NotDefined(String)
-
-    // addressindex not enabled
-    // daemon not running
+    #[display(fmt = "undefined.")]
+    NotDefined(String),
+    Other(String),
 
 // todo nonexhaustive to not have a breaking change when adding an error type
 }
