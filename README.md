@@ -48,15 +48,15 @@ println!("{}", signing_string);
 `signing_string` creates a raw transaction from the inputs of all utxos in the `fund_address`, and uses the resulting hex (a running daemon of the fund_address blockchain is required)
 to create a string that can be used as parameter string for the `signrawtransaction` daemon RPC, where in case of a multisig, a private key (WIF) needs to be supplied manually by the signer.
 
-##### notes:
+#### notes:
 - ratio is applied to both balance and interest. any change includes interest against the same ratio
 
-##### todo:
+#### todo:
 
 - [ ] documentation
-    - [ ] why this airdrop crate is needed: KMD platform addresses are the same etc, so the only differentiator is an AC
+    - [x] why this airdrop crate is needed: KMD platform addresses are the same etc, so the only differentiator is an AC
 - [x] define static payout amount in addition to ratio
-- [ ] let the builder pattern work with Results (trait type?)
+- [x] ~~let the builder pattern work with Results (trait type?)~~  impossible, checking is done in `build()` now
 - [x] send back any remainders and/or interest to fund_address
 - [x] add P2SH inputs to support multisig airdrop
 - [x] airdrop take a reference to snapshot
@@ -68,6 +68,16 @@ to create a string that can be used as parameter string for the `signrawtransact
 - [ ] use a global komodod daemon client instead of instantiating it a couple of times.
 - [ ] use an Enum for `ratio` and `amount` in `Airdrop`
 - [ ] Enum: add nonexhaustive to not have a breaking change when adding a new Enum variant
-##### long term maybe's:
+
+##### scenarios tested
+
+- [ ] Multisig yes/no
+- [ ] Ratio
+- [ ] Amount
+    - payout full amount
+- [ ] Interest included
+
+
+#### long term maybe's:
 - [ ] serialize multisig raw tx for easy multiparty signing
     - would likely be separate crate

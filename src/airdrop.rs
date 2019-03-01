@@ -63,6 +63,10 @@ impl Airdrop {
         Ok(joined)
     }
 
+    /// Takes the `fund_address` balance (and interest, if set) and calculates what each address in the
+    /// snapshot will get, based on their `address balance` to `snapshot total balance` ratio
+    ///
+    /// Sets `dest_addresses`
     pub fn calculate(&mut self) -> Result<(), AirdropError> {
         // get the utxos for the fund_address
         let utxoset = self.get_current_utxoset()?;
