@@ -4,8 +4,10 @@ use crate::snapshot::Snapshot;
 use crate::error::AirdropError;
 use komodo_rpc_client::AddressUtxos;
 use serde_json;
-use komodo_rpc_client::AddressList;
+use komodo_rpc_client::arguments::AddressList;
+use komodo_rpc_client::arguments::P2SHInputSetBuilder;
 use crate::error::ErrorKind;
+use komodo_rpc_client::arguments::address::Address;
 
 // does not hold any inputs to a transaction: especially in the case of KMD, interest needs to be calculated right before
 // an airdrop takes place
@@ -34,14 +36,14 @@ impl Airdrop {
 
         let mut outputs = komodo_rpc_client::arguments::CreateRawTransactionOutputs::new();
         for payout_addresses in &self.dest_addresses.clone().unwrap() {
-            outputs.add(&payout_addresses.address.clone(), payout_addresses.amount as f64 / 100_000_000.0);
+            outputs.add(&Address::from(&payout_addresses.address.clone()).unwrap(), payout_addresses.amount as f64 / 100_000_000.0);
         }
 
         let mut joined= String::new();
 
         if self.fund_address.multisig == true {
             if let Some(redeem_script) = redeem_script {
-                let p2sh_input_set = komodo_rpc_client::P2SHInputSetBuilder::from(&utxoset)
+                let p2sh_input_set = P2SHInputSetBuilder::from(&utxoset)
                     .set_redeem_script(redeem_script)
                     .build()?;
 
@@ -85,7 +87,7 @@ impl Airdrop {
                     let verbose_tx = client.get_raw_transaction_verbose(
                         komodo_rpc_client::TransactionId::from_hex(&utxo.txid).unwrap())?;
 
-                    interest += (verbose_tx.vout.get(utxo.output_index as usize).unwrap().interest * 100_000_000.0) as u64
+                    interest += (verbose_tx.vout.get(utxo.output_index as usize).unwrap().interest.unwrap() * 100_000_000.0) as u64
                 }
             },
             _ => {}
@@ -205,7 +207,7 @@ impl Airdrop {
             _ => komodo_rpc_client::Client::new_assetchain_client(&self.fund_address.dest_chain)
         }?;
 
-        let mut address_list = komodo_rpc_client::AddressList::new();
+        let mut address_list = AddressList::new();
         address_list.add(&self.fund_address.address);
         let utxo_set = client.get_address_utxos(&address_list)?;
 
@@ -322,7 +324,7 @@ impl<'a> AirdropBuilder<'a> {
 
         let fund_address = FundAddress {
             address: self.address.clone(),
-            dest_chain: self.chain,
+            dest_chain: self.chain.clone(),
             include_interest: self.interest,
             multisig: self.multisig
         };

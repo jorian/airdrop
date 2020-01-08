@@ -101,7 +101,7 @@ impl SnapshotBuilder {
             .collect::<Vec<_>>();
 
         Ok(Snapshot {
-            chain: self.chain,
+            chain: self.chain.clone(),
             addresses,
             amount: snapshot.total
         })

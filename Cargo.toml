@@ -5,9 +5,9 @@ version = "0.0.1"
 authors = ["Jorian <jorian@outlook.com>"]
 edition = "2018"
 license = "MIT"
+readme = "README.md"
 
 [dependencies]
-#komodo_rpc_client = { git = "https://github.com/n41r0j/komodorpc-rust-client", branch = "no_option" }
-komodo_rpc_client = { path = "/home/n41r0j/IdeaProjects/komodo-rpc-client" }
+komodo_rpc_client = "0.1.1"
 derive_more = "0.14"
 serde_json = "1.0"
