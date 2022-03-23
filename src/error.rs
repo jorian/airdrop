@@ -2,6 +2,7 @@ use std::error::Error;
 use std::io;
 
 use komodo_rpc_client::ApiError;
+use komodo_snapshot::SnapshotError;
 
 #[derive(Debug, Display)]
 #[display(fmt = "{}", kind)]
@@ -20,6 +21,8 @@ pub enum ErrorKind {
     Io(io::Error),
     #[display(fmt = "Something went wrong during the komodod RPC.")]
     ApiError(komodo_rpc_client::ApiError),
+    #[display(fmt = "Something went wrong during a snapshot.")]
+    SnapshotError(komodo_rpc_client::ApiError),
     #[display(fmt = "Serde error.")]
     Serde(serde_json::error::Error),
     #[display(fmt = "Ambiguous setup.")]
@@ -45,6 +48,12 @@ impl From<ErrorKind> for AirdropError {
             kind,
             source: None
         }
+    }
+}
+
+impl From<SnapshotError> for AirdropError {
+    fn from(e: SnapshotError) -> Self {
+        ErrorKind::SnapshotError(e).into()
     }
 }
 

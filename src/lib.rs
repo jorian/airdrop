@@ -38,14 +38,15 @@
 //!  - the one from where the funds are airdropped (mostly KMD)
 
 #![feature(drain_filter)]
-extern crate komodo_rpc_client;
+extern crate komodo_rpc;
 #[macro_use]
 extern crate derive_more;
+extern crate komodo_snapshot;
 
 mod airdrop;
-mod snapshot;
+// mod snapshot;
 mod error;
 
-pub use komodo_rpc_client::Chain;
-pub use crate::snapshot::{Snapshot, SnapshotBuilder};
+// pub use komodo_rpc_client::Chain;
+// pub use crate::snapshot::{Snapshot, SnapshotBuilder};
 pub use crate::airdrop::{Airdrop, AirdropBuilder};

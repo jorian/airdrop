@@ -8,6 +8,8 @@ license = "MIT"
 readme = "README.md"
 
 [dependencies]
-komodo_rpc_client = "0.1.1"
-derive_more = "0.14"
+komodo-rpc = { path = "../rust-komodo-rpc/client" }
+derive_more = "0.99"
 serde_json = "1.0"
+komodo_snapshot = { path = "../snapshot", version = "0.1.0" }
+# komodo_snapshot = { git = "https://github.com/jorian/komodo-snapshot", version = "0.1.0" }
